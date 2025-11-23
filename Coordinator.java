@@ -5,13 +5,13 @@ public class Coordinator {
 
     // === Collaborators managed internally ===
     private ListOfTestSuite listOfTestSuites;
-    private ListOfProgram listOfPrograms;
+    private ListOfPrograms listOfPrograms;
     private ListofTestCase testcaseList;
 
     // === Constructor ===
     public Coordinator() {
         this.listOfTestSuites = new ListOfTestSuite(); 
-        this.listOfPrograms = new ListOfProgram();
+        this.listOfPrograms = new ListOfPrograms();
         this.testcaseList = new ListofTestCase();
     }
 
