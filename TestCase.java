@@ -22,15 +22,13 @@ public class TestCase {
         return expectedOutput;
     }
 
-    public void setTitle(String title) {
-        this.title = title;
-    }
+    // expected vs actual (case-insensitive, ignore extra spaces)
+    public boolean compareOutput(String actual) {
+        if (actual == null) return false;
 
-    public void setInput(String input) {
-        this.input = input;
-    }
+        String cleanExpected = expectedOutput.trim().toLowerCase();
+        String cleanActual = actual.trim().toLowerCase();
 
-    public void setExpectedOutput(String expectedOutput) {
-        this.expectedOutput = expectedOutput;
+        return cleanExpected.equals(cleanActual);
     }
 }
