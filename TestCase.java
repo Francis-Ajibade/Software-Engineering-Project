@@ -6,7 +6,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.List;
 
-public class TestCase{
+public class TestCase {
 
     private String title;
     private String input;
@@ -83,7 +83,7 @@ public class TestCase{
             throw new IllegalArgumentException("Empty file");
         }
 
-        // Find TITLE line (expected at top)
+        // TITLE line
         String firstLine = lines.get(0).trim();
         if (!firstLine.startsWith("TITLE:")) {
             throw new IllegalArgumentException("Missing or invalid TITLE line");
@@ -110,7 +110,7 @@ public class TestCase{
             throw new IllegalArgumentException("Missing INPUT or OUTPUT section");
         }
 
-        // Input is the first non-empty line after "INPUT:"
+        // Input: first non-empty line after "INPUT:"
         String input = "";
         for (int i = inputIndex + 1; i < outputIndex; i++) {
             String line = lines.get(i);
@@ -120,7 +120,7 @@ public class TestCase{
             }
         }
 
-        // Output is the first non-empty line after "OUTPUT:" (single-line output)
+        // Output: first non-empty line after "OUTPUT:"
         String expected = "";
         for (int i = outputIndex + 1; i < lines.size(); i++) {
             String line = lines.get(i);

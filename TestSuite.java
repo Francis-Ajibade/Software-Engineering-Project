@@ -1,6 +1,6 @@
 import java.util.List;
 
-public class TestSuite {
+public class TestSuite{
 
     private String title;
     private ListofTestCase listOfTestCase;

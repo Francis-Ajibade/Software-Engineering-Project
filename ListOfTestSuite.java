@@ -2,15 +2,15 @@ public class ListOfTestSuite{
 
     private TestSuite theOnlySuite;
 
-    public ListOfTestSuite() {
+    public ListOfTestSuite(){
         this.theOnlySuite = null;
     }
 
-    public void setTestSuite(TestSuite suite) {
+    public void setTestSuite(TestSuite suite){
         this.theOnlySuite = suite;
     }
 
-    public TestSuite getTestSuite() {
+    public TestSuite getTestSuite(){
         return this.theOnlySuite;
     }
 }

@@ -3,7 +3,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-public class Coordinator{
+public class Coordinator {
 
     // === Collaborators managed internally ===
     private ListOfTestSuite listOfTestSuites;
@@ -25,7 +25,10 @@ public class Coordinator{
         listOfTestSuites.setTestSuite(suite);
     }
 
-    // Get the suite by title (only one suite stored)
+    /**
+     * Get the current TestSuite by title.
+     * Because ListOfTestSuite only stores ONE suite, this just checks the title.
+     */
     public TestSuite getTestSuite(String title) {
         TestSuite suite = listOfTestSuites.getTestSuite();
         if (suite != null && suite.getTitle().equals(title)) {
@@ -36,7 +39,7 @@ public class Coordinator{
         return null;
     }
 
-    // helper to get current suite
+    // helper to get current suite regardless of title
     public TestSuite getCurrentSuite() {
         return listOfTestSuites.getTestSuite();
     }
@@ -112,37 +115,79 @@ public class Coordinator{
     }
 
     // ============================================================
+    //  VALIDATE TEST CASES IN A SUITE (helper)
+    // ============================================================
+    /**
+     * Validates that all test cases in the given suite have non-empty
+     * title, input, and expected output.
+     *
+     * @throws IllegalArgumentException if something is missing.
+     */
+    private void validateTestCasesInSuite(TestSuite suite) {
+        if (suite.getTestCases() == null || suite.getTestCases().isEmpty()) {
+            throw new IllegalArgumentException("No test cases in test suite \"" + suite.getTitle() + "\".");
+        }
+
+        for (TestCase tc : suite.getTestCases()) {
+            if (tc.getTitle() == null || tc.getTitle().trim().isEmpty()) {
+                throw new IllegalArgumentException("Test case has empty TITLE.");
+            }
+            if (tc.getInput() == null || tc.getInput().trim().isEmpty()) {
+                throw new IllegalArgumentException("Test case \"" + tc.getTitle() + "\" has empty INPUT.");
+            }
+            if (tc.getExpectedOutput() == null || tc.getExpectedOutput().trim().isEmpty()) {
+                throw new IllegalArgumentException("Test case \"" + tc.getTitle() + "\" has empty OUTPUT.");
+            }
+        }
+    }
+
+    // ============================================================
     //                  EXECUTE TEST SUITE
+    //  Matches signature: executeTestSuite(suiteName, path)
     // ============================================================
     public List<Result> executeTestSuite(String suiteName, String path) {
 
         List<Result> results = new ArrayList<>();
 
-        TestSuite suite = listOfTestSuites.getTestSuite();
-        if (suite == null) return results;
+        // 1. Validate suite exists
+        TestSuite suite = getTestSuite(suiteName);
+        if (suite == null) {
+            throw new IllegalArgumentException("No Test Suite found with name \"" + suiteName + "\".");
+        }
 
-        // 1. generate program objects
+        // 2. Validate submissions folder
+        File submissionsDir = new File(path);
+        if (!submissionsDir.exists() || !submissionsDir.isDirectory()) {
+            throw new IllegalArgumentException("Submissions folder does not exist or is not a directory:\n" + path);
+        }
+
+        // 3. Validate test cases in suite
+        validateTestCasesInSuite(suite);
+
+        // 4. Generate Program objects
         listOfPrograms.generatePrograms(path);
 
-        // 2. For each student program
+        // 5. For each student program
         for (Program p : listOfPrograms.getPrograms()) {
 
-            boolean compiled = p.compile();
-            if (!compiled) {
-                results.add(new Result(p.getProgramName(), "Compilation", false));
+            String compErr = p.compileAndReturnErrors();
+            if (compErr != null) {
+                // Record compilation error result with full error text
+                results.add(new Result(p.getProgramName(), compErr));
                 continue;
             }
 
-            // 3. For each test case assigned to this suite
+            // 6. For each test case in the suite
             for (TestCase tc : suite.getTestCases()) {
-
                 String actual = p.run(tc.getInput());
                 boolean passed = tc.compareOutput(actual);
 
                 results.add(new Result(
-                        p.getProgramName(),
-                        tc.getTitle(),
-                        passed
+                        p.getProgramName(),           // student/folder name
+                        tc.getTitle(),                // test case title
+                        passed,
+                        tc.getExpectedOutput(),
+                        actual
                 ));
             }
         }

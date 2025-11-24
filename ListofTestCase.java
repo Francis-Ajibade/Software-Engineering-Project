@@ -1,7 +1,7 @@
 import java.util.ArrayList;
 import java.util.List;
 
-public class ListofTestCase {
+public class ListofTestCase{
 
     private List<TestCase> list = new ArrayList<>();
 

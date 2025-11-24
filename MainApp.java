@@ -17,7 +17,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-public class MainApp extends Application {
+public class MainApp extends Application{
 
     // Backend
     private Coordinator coordinator = new Coordinator();

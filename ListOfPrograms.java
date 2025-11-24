@@ -2,7 +2,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
-public class ListOfPrograms {
+public class ListOfPrograms{
 
     private List<Program> programs;
 
