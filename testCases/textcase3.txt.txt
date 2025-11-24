@@ -1,0 +1,7 @@
+TITLE: TC_AddNegative
+
+INPUT:
+-3 8
+
+OUTPUT:
+5
