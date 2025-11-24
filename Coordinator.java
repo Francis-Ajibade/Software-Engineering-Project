@@ -1,3 +1,4 @@
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -10,7 +11,7 @@ public class Coordinator {
 
     // === Constructor ===
     public Coordinator() {
-        this.listOfTestSuites = new ListOfTestSuite(); 
+        this.listOfTestSuites = new ListOfTestSuite();
         this.listOfPrograms = new ListOfPrograms();
         this.testcaseList = new ListofTestCase();
     }
@@ -21,6 +22,26 @@ public class Coordinator {
     public void createTestSuite(String title) {
         TestSuite suite = new TestSuite(title);
         listOfTestSuites.setTestSuite(suite);
+    }
+
+    /**
+     * Get the current TestSuite by title.
+     * Because ListOfTestSuite only stores ONE suite, this just checks the title.
+     */
+    public TestSuite getTestSuite(String title) {
+        TestSuite suite = listOfTestSuites.getTestSuite();
+        if (suite != null && suite.getTitle().equals(title)) {
+            // Debug log
+            System.out.println("[Coordinator] getTestSuite(\"" + title + "\") -> found");
+            return suite;
+        }
+        System.out.println("[Coordinator] getTestSuite(\"" + title + "\") -> NOT found");
+        return null;
+    }
+
+    // helper to get current suite regardless of title
+    public TestSuite getCurrentSuite() {
+        return listOfTestSuites.getTestSuite();
     }
 
     // ============================================================
@@ -47,13 +68,38 @@ public class Coordinator {
         }
     }
 
+    // ============================================================
+    //                SAVE A TEST CASE TO FILE
+    // ============================================================
+    /**
+     * Save the test case with the given title to a file.
+     *
+     * @param testCaseTitle title of the test case to save
+     * @param filename      file name/path to save to
+     * @return true if saved successfully, false if test case not found or error occurred
+     */
+    public boolean saveTestCase(String testCaseTitle, String filename) {
+        TestCase tc = testcaseList.searchByTitle(testCaseTitle);
+        if (tc == null) {
+            System.out.println("[Coordinator] saveTestCase: no test case with title \"" + testCaseTitle + "\"");
+            return false;
+        }
 
+        try {
+            tc.saveToFile(filename);
+            System.out.println("[Coordinator] saveTestCase: \"" + testCaseTitle + "\" saved to " + filename);
+            return true;
+        } catch (IOException e) {
+            System.out.println("[Coordinator] saveTestCase ERROR: " + e.getMessage());
+            return false;
+        }
+    }
 
     // ============================================================
     //                  EXECUTE TEST SUITE
     //  Matches sequence diagram signature: executeTestSuite(suiteName, path)
     // ============================================================
-  public List<Result> executeTestSuite(String suiteName, String path) {
+    public List<Result> executeTestSuite(String suiteName, String path) {
 
         List<Result> results = new ArrayList<>();
 
@@ -83,15 +129,9 @@ public class Coordinator {
                         tc.getTitle(),
                         passed
                 ));
-
             }
         }
 
         return results;
-    }
-
-    // helper to get current suite
-    public TestSuite getCurrentSuite() {
-        return listOfTestSuites.getTestSuite();
     }
 }
