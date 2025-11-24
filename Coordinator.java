@@ -1,8 +1,9 @@
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-public class Coordinator {
+public class Coordinator{
 
     // === Collaborators managed internally ===
     private ListOfTestSuite listOfTestSuites;
@@ -24,14 +25,10 @@ public class Coordinator {
         listOfTestSuites.setTestSuite(suite);
     }
 
-    /**
-     * Get the current TestSuite by title.
-     * Because ListOfTestSuite only stores ONE suite, this just checks the title.
-     */
+    // Get the suite by title (only one suite stored)
     public TestSuite getTestSuite(String title) {
         TestSuite suite = listOfTestSuites.getTestSuite();
         if (suite != null && suite.getTitle().equals(title)) {
-            // Debug log
             System.out.println("[Coordinator] getTestSuite(\"" + title + "\") -> found");
             return suite;
         }
@@ -39,17 +36,36 @@ public class Coordinator {
         return null;
     }
 
-    // helper to get current suite regardless of title
+    // helper to get current suite
     public TestSuite getCurrentSuite() {
         return listOfTestSuites.getTestSuite();
     }
 
     // ============================================================
-    //               CREATE A NEW TEST CASE
+    //               CREATE A NEW TEST CASE (manual)
     // ============================================================
     public void createTestCase(String title, String input, String expectedOutput) {
         TestCase tc = new TestCase(title, input, expectedOutput);
         testcaseList.addTestCase(tc);
+    }
+
+    // ============================================================
+    //               LOAD TEST CASE FROM FILE (Case 2)
+    // ============================================================
+    /**
+     * Parse and load a TestCase from a file in the required format.
+     * Returns the created TestCase, or null if invalid / error.
+     */
+    public TestCase loadTestCaseFromFile(File file) {
+        try {
+            TestCase tc = TestCase.parseFromFile(file);
+            testcaseList.addTestCase(tc);
+            System.out.println("[Coordinator] Loaded TestCase from file: " + tc.getTitle());
+            return tc;
+        } catch (IOException | IllegalArgumentException e) {
+            System.out.println("[Coordinator] loadTestCaseFromFile ERROR: " + e.getMessage());
+            return null;
+        }
     }
 
     // ============================================================
@@ -69,35 +85,34 @@ public class Coordinator {
     }
 
     // ============================================================
-    //                SAVE A TEST CASE TO FILE
+    //                SAVE A TEST CASE TO A FILE (Case 3)
     // ============================================================
     /**
-     * Save the test case with the given title to a file.
+     * Save the test case with the given title to a specific file path.
      *
      * @param testCaseTitle title of the test case to save
-     * @param filename      file name/path to save to
+     * @param fullPath      full path (including filename) to save to
      * @return true if saved successfully, false if test case not found or error occurred
      */
-    public boolean saveTestCase(String testCaseTitle, String filename) {
+    public boolean saveTestCaseToFile(String testCaseTitle, String fullPath) {
         TestCase tc = testcaseList.searchByTitle(testCaseTitle);
         if (tc == null) {
-            System.out.println("[Coordinator] saveTestCase: no test case with title \"" + testCaseTitle + "\"");
+            System.out.println("[Coordinator] saveTestCaseToFile: no test case with title \"" + testCaseTitle + "\"");
             return false;
         }
 
         try {
-            tc.saveToFile(filename);
-            System.out.println("[Coordinator] saveTestCase: \"" + testCaseTitle + "\" saved to " + filename);
+            tc.saveToFile(fullPath);
+            System.out.println("[Coordinator] saveTestCaseToFile: \"" + testCaseTitle + "\" saved to " + fullPath);
             return true;
         } catch (IOException e) {
-            System.out.println("[Coordinator] saveTestCase ERROR: " + e.getMessage());
+            System.out.println("[Coordinator] saveTestCaseToFile ERROR: " + e.getMessage());
             return false;
         }
     }
 
     // ============================================================
     //                  EXECUTE TEST SUITE
-    //  Matches sequence diagram signature: executeTestSuite(suiteName, path)
     // ============================================================
     public List<Result> executeTestSuite(String suiteName, String path) {
 
