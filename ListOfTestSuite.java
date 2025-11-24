@@ -1,5 +1,5 @@
 public class ListOfTestSuite{
-
+    
     private TestSuite theOnlySuite;
 
     public ListOfTestSuite(){

@@ -6,7 +6,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.List;
 
-public class TestCase {
+public class TestCase{
 
     private String title;
     private String input;

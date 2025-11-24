@@ -3,7 +3,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-public class Coordinator {
+public class Coordinator{
 
     // === Collaborators managed internally ===
     private ListOfTestSuite listOfTestSuites;
@@ -90,13 +90,6 @@ public class Coordinator {
     // ============================================================
     //                SAVE A TEST CASE TO A FILE (Case 3)
     // ============================================================
-    /**
-     * Save the test case with the given title to a specific file path.
-     *
-     * @param testCaseTitle title of the test case to save
-     * @param fullPath      full path (including filename) to save to
-     * @return true if saved successfully, false if test case not found or error occurred
-     */
     public boolean saveTestCaseToFile(String testCaseTitle, String fullPath) {
         TestCase tc = testcaseList.searchByTitle(testCaseTitle);
         if (tc == null) {
@@ -117,12 +110,6 @@ public class Coordinator {
     // ============================================================
     //  VALIDATE TEST CASES IN A SUITE (helper)
     // ============================================================
-    /**
-     * Validates that all test cases in the given suite have non-empty
-     * title, input, and expected output.
-     *
-     * @throws IllegalArgumentException if something is missing.
-     */
     private void validateTestCasesInSuite(TestSuite suite) {
         if (suite.getTestCases() == null || suite.getTestCases().isEmpty()) {
             throw new IllegalArgumentException("No test cases in test suite \"" + suite.getTitle() + "\".");
@@ -143,7 +130,6 @@ public class Coordinator {
 
     // ============================================================
     //                  EXECUTE TEST SUITE
-    //  Matches signature: executeTestSuite(suiteName, path)
     // ============================================================
     public List<Result> executeTestSuite(String suiteName, String path) {
 
@@ -172,7 +158,6 @@ public class Coordinator {
 
             String compErr = p.compileAndReturnErrors();
             if (compErr != null) {
-                // Record compilation error result with full error text
                 results.add(new Result(p.getProgramName(), compErr));
                 continue;
             }
@@ -183,8 +168,8 @@ public class Coordinator {
                 boolean passed = tc.compareOutput(actual);
 
                 results.add(new Result(
-                        p.getProgramName(),           // student/folder name
-                        tc.getTitle(),                // test case title
+                        p.getProgramName(),
+                        tc.getTitle(),
                         passed,
                         tc.getExpectedOutput(),
                         actual

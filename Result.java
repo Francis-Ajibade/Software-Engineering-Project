@@ -1,5 +1,5 @@
 public class Result{
-
+    
     private String programName;       // Student / program name
     private String testCaseTitle;     // Test case title, or "Compilation"
     private boolean passed;           // Pass/fail

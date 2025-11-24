@@ -1,10 +1,9 @@
 import javafx.application.Application;
+import javafx.concurrent.Task;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
-import javafx.scene.control.TreeItem;
-import javafx.scene.control.TreeView;
 import javafx.scene.layout.*;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.FileChooser;
@@ -34,24 +33,20 @@ public class MainApp extends Application{
     @Override
     public void start(Stage stage) {
 
-        // Title
         Label titleLabel = new Label("Assignment Compiler");
         titleLabel.setStyle("-fx-font-size: 26px; -fx-font-weight: bold;");
 
-        // Buttons
         Button btnCreateSuite = new Button("Create Test Suite");
         btnGetSuite = new Button("Get Test Suite");
         btnCreateCase = new Button("Create Test Case");
         btnSaveCase = new Button("Save Test Case");
         btnExecuteSuite = new Button("Execute Test Suite");
 
-        // Initial state
         btnGetSuite.setDisable(true);
         btnCreateCase.setDisable(true);
         btnSaveCase.setDisable(true);
         btnExecuteSuite.setDisable(true);
 
-        // Actions
         btnCreateSuite.setOnAction(e -> showCreateTestSuitePopup(stage));
         btnGetSuite.setOnAction(e -> showGetTestSuitePopup(stage));
         btnCreateCase.setOnAction(e -> showCreateTestCasePopup(stage));
@@ -75,9 +70,7 @@ public class MainApp extends Application{
         stage.show();
     }
 
-    // =========================================================================
-    // CREATE TEST SUITE POPUP
-    // =========================================================================
+    // ============= CREATE SUITE =============
     private void showCreateTestSuitePopup(Stage owner) {
 
         Stage popup = new Stage();
@@ -93,12 +86,8 @@ public class MainApp extends Application{
         btnDone.setOnAction(e -> {
             String title = titleField.getText().trim();
 
-            // backend
             coordinator.createTestSuite(title);
             TestSuite suite = coordinator.getCurrentSuite();
-
-            // debug
-            System.out.println("[DEBUG] Created TestSuite: " + suite.getTitle());
 
             popup.close();
 
@@ -106,7 +95,6 @@ public class MainApp extends Application{
                     "Test Suite \"" + suite.getTitle() + "\" created successfully!"
             ).showAndWait();
 
-            // enable related buttons
             btnGetSuite.setDisable(false);
             btnCreateCase.setDisable(false);
             btnExecuteSuite.setDisable(false);
@@ -123,9 +111,7 @@ public class MainApp extends Application{
         popup.show();
     }
 
-    // =========================================================================
-    // GET TEST SUITE POPUP
-    // =========================================================================
+    // ============= GET SUITE =============
     private void showGetTestSuitePopup(Stage owner) {
 
         TextInputDialog dialog = new TextInputDialog();
@@ -134,11 +120,9 @@ public class MainApp extends Application{
         dialog.setContentText("Title:");
 
         dialog.showAndWait().ifPresent(userTitle -> {
-            // go through coordinator
             TestSuite suite = coordinator.getTestSuite(userTitle);
 
             if (suite != null) {
-                System.out.println("[DEBUG] Retrieved TestSuite from Coordinator: " + suite.getTitle());
                 showTestSuiteDetails(owner, suite);
             } else {
                 new Alert(Alert.AlertType.ERROR,
@@ -148,9 +132,6 @@ public class MainApp extends Application{
         });
     }
 
-    // =========================================================================
-    // SHOW TEST SUITE DETAILS
-    // =========================================================================
     private void showTestSuiteDetails(Stage owner, TestSuite suite) {
 
         Stage stage = new Stage();
@@ -179,9 +160,6 @@ public class MainApp extends Application{
         stage.show();
     }
 
-    // =========================================================================
-    // LIST OF TEST SUITES WINDOW
-    // =========================================================================
     private void showListOfTestSuiteWindow(Stage owner) {
 
         Stage stage = new Stage();
@@ -207,9 +185,7 @@ public class MainApp extends Application{
         stage.show();
     }
 
-    // =========================================================================
-    // CREATE TEST CASE POPUP (MANUAL + UPLOAD FILE)
-    // =========================================================================
+    // ============= CREATE TEST CASE (manual + upload) =============
     private void showCreateTestCasePopup(Stage owner) {
 
         Stage popup = new Stage();
@@ -224,11 +200,10 @@ public class MainApp extends Application{
         Label expectedLabel = new Label("Expected Output:");
         TextArea expectedArea = new TextArea();
 
-        Button uploadBtn = new Button("Upload From File"); // Case 2
+        Button uploadBtn = new Button("Upload From File");
         Button doneBtn = new Button("Done");
         doneBtn.setDisable(true);
 
-        // validate manual fields
         Runnable validate = () -> {
             boolean ok = !titleField.getText().trim().isEmpty()
                     && !expectedArea.getText().trim().isEmpty();
@@ -238,7 +213,6 @@ public class MainApp extends Application{
         titleField.textProperty().addListener((o, ov, nv) -> validate.run());
         expectedArea.textProperty().addListener((o, ov, nv) -> validate.run());
 
-        // Manual done
         doneBtn.setOnAction(e -> {
             String title = titleField.getText().trim();
             String input = inputArea.getText();
@@ -258,7 +232,6 @@ public class MainApp extends Application{
             showListOfTestCaseScreen(owner);
         });
 
-        // Upload from file (Case 2)
         uploadBtn.setOnAction(e -> {
             FileChooser fc = new FileChooser();
             fc.setTitle("Select Test Case File");
@@ -298,9 +271,6 @@ public class MainApp extends Application{
         popup.show();
     }
 
-    // =========================================================================
-    // MODAL TO SHOW REQUIRED FILE FORMAT (Case 2 invalid format)
-    // =========================================================================
     private void showInvalidFormatModal(Stage owner) {
         Stage popup = new Stage();
         popup.setTitle("Invalid Test Case File");
@@ -324,39 +294,43 @@ public class MainApp extends Application{
         popup.show();
     }
 
-    // =========================================================================
-    // LIST OF TEST CASES SCREEN
-    // =========================================================================
     private void showListOfTestCaseScreen(Stage owner) {
 
-        Stage stage = new Stage();
-        stage.setTitle("ListOfTestCase");
+    Stage stage = new Stage();
+    stage.setTitle("ListOfTestCase");
 
-        Label header = new Label("List of Test Cases");
-        header.setStyle("-fx-font-size: 18px; -fx-font-weight: bold;");
+    Label header = new Label("List of Test Cases");
+    header.setStyle("-fx-font-size: 18px; -fx-font-weight: bold;");
 
-        ListView<String> view = new ListView<>();
-        for (TestCaseView tc : testCases)
-            view.getItems().add(tc.title);
+    ListView<String> view = new ListView<>();
+    for (TestCaseView tc : testCases)
+        view.getItems().add(tc.title);
 
-        Button addButton = new Button("Add to Test Suite");
-        addButton.setOnAction(e -> showAddToSuitePopup(stage));
+    Button addButton = new Button("Add to Test Suite");
+    addButton.setOnAction(e -> showAddToSuitePopup(stage));
 
-        Button back = new Button("Back");
-        back.setOnAction(e -> stage.close());
+    Button createAnotherBtn = new Button("Create Test Case");
+    createAnotherBtn.setOnAction(e -> {
+        stage.close();
+        showCreateTestCasePopup(owner);
+    });
 
-        VBox root = new VBox(15, header, view, addButton, back);
-        root.setAlignment(Pos.CENTER);
-        root.setPadding(new Insets(20));
+    Button back = new Button("Back");
+    back.setOnAction(e -> stage.close());
 
-        stage.setScene(new Scene(root, 400, 450));
-        stage.initOwner(owner);
-        stage.show();
-    }
+    HBox buttonRow = new HBox(15, addButton, createAnotherBtn, back);
+    buttonRow.setAlignment(Pos.CENTER);
 
-    // =========================================================================
-    // ADD TEST CASE TO TEST SUITE POPUP
-    // =========================================================================
+    VBox root = new VBox(15, header, view, buttonRow);
+    root.setAlignment(Pos.CENTER);
+    root.setPadding(new Insets(20));
+
+    stage.setScene(new Scene(root, 430, 450));
+    stage.initOwner(owner);
+    stage.show();
+}
+
+    // ============= ADD TEST CASE TO SUITE =============
     private void showAddToSuitePopup(Stage owner) {
 
         Stage popup = new Stage();
@@ -411,9 +385,6 @@ public class MainApp extends Application{
         popup.show();
     }
 
-    // =========================================================================
-    // SHOW SUITE WITH TEST CASES (TREE VIEW)
-    // =========================================================================
     private void showTestSuiteWithCases(Stage owner, TestSuite suite) {
 
         Stage stage = new Stage();
@@ -441,9 +412,7 @@ public class MainApp extends Application{
         stage.show();
     }
 
-    // =========================================================================
-    // SAVE TEST CASE POPUP (HOME SCREEN BUTTON) – Case 3 (step 1)
-    // =========================================================================
+    // ============= SAVE TEST CASE =============
     private void showSaveTestCasePopup(Stage owner) {
 
         Stage popup = new Stage();
@@ -499,9 +468,6 @@ public class MainApp extends Application{
         popup.show();
     }
 
-    // =========================================================================
-    // SAVE TEST CASE PREVIEW WINDOW – Case 3 (step 2)
-    // =========================================================================
     private void showSaveTestCasePreviewWindow(Stage owner, String testCaseTitle, String filename) {
 
         Stage stage = new Stage();
@@ -542,9 +508,7 @@ public class MainApp extends Application{
         stage.show();
     }
 
-    // =========================================================================
-    // EXECUTE TEST SUITE POPUP
-    // =========================================================================
+    // ============= EXECUTE TEST SUITE (with loading) =============
     private void showExecuteTestSuitePopup(Stage owner) {
 
         Stage popup = new Stage();
@@ -583,9 +547,27 @@ public class MainApp extends Application{
                 return;
             }
 
-            try {
-                List<Result> results = coordinator.executeTestSuite(suiteName, folderPath);
+            // Loading dialog
+            Stage loading = new Stage();
+            Label loadingLabel = new Label("Executing Test Suite…");
+            ProgressIndicator spinner = new ProgressIndicator();
+            VBox loadingBox = new VBox(15, loadingLabel, spinner);
+            loadingBox.setAlignment(Pos.CENTER);
+            loadingBox.setPadding(new Insets(20));
+            loading.setScene(new Scene(loadingBox, 260, 150));
+            loading.initOwner(owner);
+            loading.show();
 
+            Task<List<Result>> task = new Task<>() {
+                @Override
+                protected List<Result> call() {
+                    return coordinator.executeTestSuite(suiteName, folderPath);
+                }
+            };
+
+            task.setOnSucceeded(ev -> {
+                loading.close();
+                List<Result> results = task.getValue();
                 if (results.isEmpty()) {
                     new Alert(Alert.AlertType.INFORMATION,
                             "Execution finished, but no results were produced."
@@ -594,17 +576,18 @@ public class MainApp extends Application{
                     popup.close();
                     showClassReportWindow(owner, results);
                 }
+            });
 
-            } catch (IllegalArgumentException ex) {
+            task.setOnFailed(ev -> {
+                loading.close();
+                Throwable ex = task.getException();
                 new Alert(Alert.AlertType.ERROR,
-                        ex.getMessage()
-                ).showAndWait();
-            } catch (Exception ex) {
-                new Alert(Alert.AlertType.ERROR,
-                        "An unexpected error occurred while executing the test suite."
+                        "Execution failed: " + (ex == null ? "" : ex.getMessage())
                 ).showAndWait();
                 ex.printStackTrace();
-            }
+            });
+
+            new Thread(task).start();
         });
 
         cancelBtn.setOnAction(e -> popup.close());
@@ -625,9 +608,7 @@ public class MainApp extends Application{
         popup.show();
     }
 
-    // =========================================================================
-    // CLASS REPORT WINDOW
-    // =========================================================================
+    // ============= CLASS REPORT (color-coded + save report) =============
     private void showClassReportWindow(Stage owner, List<Result> results) {
 
         Stage stage = new Stage();
@@ -651,26 +632,40 @@ public class MainApp extends Application{
             studentLabel.setStyle("-fx-font-size: 14px; -fx-font-weight: bold;");
 
             Separator sep = new Separator();
-
             studentBox.getChildren().addAll(studentLabel, sep);
 
             boolean hasCompilationError = studentResults.stream()
-                    .anyMatch(r -> "Compilation".equalsIgnoreCase(r.getTestCaseTitle()) && !r.isPassed());
+                    .anyMatch(Result::isCompilationError);
 
             if (hasCompilationError) {
+                Result comp = studentResults.stream()
+                        .filter(Result::isCompilationError)
+                        .findFirst().orElse(null);
+
                 Label compErr = new Label("COMPILATION ERROR — No test cases executed");
                 compErr.setStyle("-fx-text-fill: red;");
-                studentBox.getChildren().add(compErr);
+
+                Button viewBtn = new Button("View");
+                Result finalComp = comp;
+                viewBtn.setOnAction(e ->
+                        showResultDetailsWindow(student, finalComp)
+                );
+
+                HBox row = new HBox(10, compErr, viewBtn);
+                row.setAlignment(Pos.CENTER_LEFT);
+                studentBox.getChildren().add(row);
+
             } else {
                 for (Result r : studentResults) {
-                    if ("Compilation".equalsIgnoreCase(r.getTestCaseTitle())) {
-                        continue;
-                    }
-
                     String status = r.isPassed() ? "PASS" : "FAIL";
                     Label line = new Label(
                             String.format("%-20s ............ %s", r.getTestCaseTitle(), status)
                     );
+                    if (r.isPassed()) {
+                        line.setStyle("-fx-text-fill: green;");
+                    } else {
+                        line.setStyle("-fx-text-fill: red;");
+                    }
 
                     Button viewBtn = new Button("View");
                     viewBtn.setOnAction(e ->
@@ -691,10 +686,16 @@ public class MainApp extends Application{
         ScrollPane scroll = new ScrollPane(content);
         scroll.setFitToWidth(true);
 
+        Button saveReportBtn = new Button("Save Class Report");
+        saveReportBtn.setOnAction(e -> saveClassReportToFile(stage, results));
+
         Button closeBtn = new Button("Close");
         closeBtn.setOnAction(e -> stage.close());
 
-        VBox root = new VBox(10, header, scroll, closeBtn);
+        HBox bottomRow = new HBox(10, saveReportBtn, closeBtn);
+        bottomRow.setAlignment(Pos.CENTER_RIGHT);
+
+        VBox root = new VBox(10, header, scroll, bottomRow);
         root.setPadding(new Insets(15));
 
         stage.setScene(new Scene(root, 650, 520));
@@ -702,68 +703,165 @@ public class MainApp extends Application{
         stage.show();
     }
 
-    // =========================================================================
-    // RESULT DETAILS WINDOW + Save button
-    // =========================================================================
+    // Save whole class report as formatted text
+    private void saveClassReportToFile(Stage owner, List<Result> results) {
+        FileChooser chooser = new FileChooser();
+        chooser.setTitle("Save Class Report");
+        chooser.setInitialFileName("ClassReport.txt");
+        File dest = chooser.showSaveDialog(owner);
+        if (dest == null) return;
+
+        Map<String, List<Result>> byStudent = results.stream()
+                .collect(Collectors.groupingBy(Result::getProgramName));
+
+        try (PrintWriter out = new PrintWriter(dest)) {
+            out.println("=== CLASS REPORT ===");
+            out.println();
+
+            for (Map.Entry<String, List<Result>> entry : byStudent.entrySet()) {
+                String student = entry.getKey();
+                List<Result> studentResults = entry.getValue();
+
+                out.println("Student: " + student);
+                out.println("----------------------------------------");
+
+                boolean hasCompilationError = studentResults.stream()
+                        .anyMatch(Result::isCompilationError);
+
+                if (hasCompilationError) {
+                    Result comp = studentResults.stream()
+                            .filter(Result::isCompilationError)
+                            .findFirst().orElse(null);
+                    out.println("COMPILATION ERROR:");
+                    if (comp != null && comp.getCompileError() != null) {
+                        out.println(comp.getCompileError());
+                    }
+                    out.println();
+                } else {
+                    for (Result r : studentResults) {
+                        String status = r.isPassed() ? "PASS" : "FAIL";
+                        out.printf("%s ............ %s%n", r.getTestCaseTitle(), status);
+
+                        if (!r.isPassed()) {
+                            out.println("Expected Output:");
+                            out.println(r.getExpected());
+                            out.println();
+                            out.println("Actual Output:");
+                            out.println(r.getActual());
+                            out.println();
+                        }
+                    }
+                    out.println();
+                }
+            }
+
+            new Alert(Alert.AlertType.INFORMATION,
+                    "Class report saved successfully."
+            ).showAndWait();
+
+        } catch (Exception ex) {
+            new Alert(Alert.AlertType.ERROR,
+                    "Failed to save class report: " + ex.getMessage()
+            ).showAndWait();
+        }
+    }
+
+    // ============= RESULT DETAILS =============
     private void showResultDetailsWindow(String studentName, Result result) {
 
         Stage stage = new Stage();
         stage.setTitle("Result Details");
 
+        VBox root = new VBox(12);
+        root.setPadding(new Insets(15));
+
         Label studentLabel = new Label("Student: " + studentName);
         Label testLabel = new Label("Test Case: " + result.getTestCaseTitle());
-        Label statusLabel = new Label("Status: " + (result.isPassed() ? "PASS" : "FAIL"));
+        root.getChildren().addAll(studentLabel, testLabel);
 
-        TextArea detailsArea = new TextArea();
-        detailsArea.setEditable(false);
-        detailsArea.setWrapText(true);
-        detailsArea.setText("No additional details available.\n" +
-                "You can extend Result to store actual/expected output and show them here.");
+        if (result.isCompilationError()) {
+            Label status = new Label("COMPILATION ERROR:");
+            status.setStyle("-fx-text-fill: red; -fx-font-weight: bold;");
 
-        Button saveBtn = new Button("Save Result to File");
-        saveBtn.setOnAction(e -> {
-            FileChooser chooser = new FileChooser();
-            chooser.setTitle("Save Test Result");
-            chooser.setInitialFileName(result.getTestCaseTitle() + "_" + studentName + ".txt");
-            File dest = chooser.showSaveDialog(stage);
-            if (dest != null) {
-                try (PrintWriter out = new PrintWriter(dest)) {
-                    out.println("Student: " + studentName);
-                    out.println("Test Case: " + result.getTestCaseTitle());
-                    out.println("Status: " + (result.isPassed() ? "PASS" : "FAIL"));
-                    new Alert(Alert.AlertType.INFORMATION,
-                            "Result saved successfully."
-                    ).showAndWait();
-                } catch (Exception ex) {
-                    new Alert(Alert.AlertType.ERROR,
-                            "Failed to save result: " + ex.getMessage()
-                    ).showAndWait();
-                }
-            }
-        });
+            TextArea area = new TextArea(result.getCompileError());
+            area.setEditable(false);
+            area.setWrapText(true);
+
+            root.getChildren().addAll(status, area);
+
+        } else {
+            Label status = new Label("Status: " + (result.isPassed() ? "PASS" : "FAIL"));
+            status.setStyle(result.isPassed()
+                    ? "-fx-text-fill: green; -fx-font-weight: bold;"
+                    : "-fx-text-fill: red; -fx-font-weight: bold;");
+
+            Label expectedLabel = new Label("Expected Output:");
+            TextArea expectedArea = new TextArea(result.getExpected());
+            expectedArea.setEditable(false);
+
+            Label actualLabel = new Label("Actual Output:");
+            TextArea actualArea = new TextArea(result.getActual());
+            actualArea.setEditable(false);
+
+            root.getChildren().addAll(
+                    status,
+                    expectedLabel, expectedArea,
+                    actualLabel, actualArea
+            );
+        }
+
+        Button saveBtn = new Button("Save Result");
+        saveBtn.setOnAction(e -> saveResultToFile(studentName, result, stage));
 
         Button closeBtn = new Button("Close");
         closeBtn.setOnAction(e -> stage.close());
 
-        HBox buttonsRow = new HBox(10, saveBtn, closeBtn);
-        buttonsRow.setAlignment(Pos.CENTER_LEFT);
+        HBox row = new HBox(10, saveBtn, closeBtn);
+        row.setAlignment(Pos.CENTER_LEFT);
+        root.getChildren().add(row);
 
-        VBox root = new VBox(10,
-                studentLabel,
-                testLabel,
-                statusLabel,
-                detailsArea,
-                buttonsRow
-        );
-        root.setPadding(new Insets(15));
-
-        stage.setScene(new Scene(root, 420, 320));
+        stage.setScene(new Scene(root, 430, 460));
         stage.show();
     }
 
-    // =========================================================================
-    // UTILITY
-    // =========================================================================
+    // save single result
+    private void saveResultToFile(String studentName, Result result, Stage owner) {
+        FileChooser chooser = new FileChooser();
+        chooser.setTitle("Save Test Result");
+        chooser.setInitialFileName(result.getTestCaseTitle() + "_" + studentName + ".txt");
+        File dest = chooser.showSaveDialog(owner);
+        if (dest == null) return;
+
+        try (PrintWriter out = new PrintWriter(dest)) {
+            out.println("Student: " + studentName);
+            out.println("Test Case: " + result.getTestCaseTitle());
+            out.println("----------------------------------------");
+
+            if (result.isCompilationError()) {
+                out.println("COMPILATION ERROR:");
+                out.println(result.getCompileError());
+            } else {
+                out.println("Status: " + (result.isPassed() ? "PASS" : "FAIL"));
+                out.println();
+                out.println("Expected Output:");
+                out.println(result.getExpected());
+                out.println();
+                out.println("Actual Output:");
+                out.println(result.getActual());
+            }
+
+            new Alert(Alert.AlertType.INFORMATION,
+                    "Result saved successfully."
+            ).showAndWait();
+
+        } catch (Exception ex) {
+            new Alert(Alert.AlertType.ERROR,
+                    "Failed to save result: " + ex.getMessage()
+            ).showAndWait();
+        }
+    }
+
+    // ============= UTIL =============
     private TestCaseView findTestCaseByTitle(String title) {
         for (TestCaseView tc : testCases)
             if (tc.title.equals(title))
