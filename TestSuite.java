@@ -1,8 +1,7 @@
-import java.util.ArrayList;
 import java.util.List;
 
-public class TestSuite {
-
+public class TestSuite{
+    
     private String title;
     private ListofTestCase listOfTestCase;
 
@@ -16,7 +15,7 @@ public class TestSuite {
     }
 
     public List<TestCase> getTestCases() {
-        return listOfTestCase.getAllTestCases();
+        return listOfTestCase.getAll();
     }
 
     public String getTitle() {

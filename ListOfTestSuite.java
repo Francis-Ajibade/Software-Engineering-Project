@@ -1,20 +1,16 @@
-public class ListOfTestSuite {
+public class ListOfTestSuite{
+    
+    private TestSuite theOnlySuite;
 
-    private TestSuite suite;
-
-    public ListOfTestSuite() {
-        this.suite = null;
+    public ListOfTestSuite(){
+        this.theOnlySuite = null;
     }
 
-    public void setTestSuite(TestSuite suite) {
-        this.suite = suite;
+    public void setTestSuite(TestSuite suite){
+        this.theOnlySuite = suite;
     }
 
-    public TestSuite getTestSuite() {
-        return this.suite;
-    }
-
-    public boolean hasSuite() {
-        return this.suite != null;
+    public TestSuite getTestSuite(){
+        return this.theOnlySuite;
     }
 }

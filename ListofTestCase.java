@@ -1,27 +1,22 @@
 import java.util.ArrayList;
 import java.util.List;
 
-public class ListofTestCase {
-
-    private List<TestCase> testCases;
-
-    public ListofTestCase() {
-        this.testCases = new ArrayList<>();
-    }
+public class ListofTestCase{
+    
+    private List<TestCase> list = new ArrayList<>();
 
     public void addTestCase(TestCase tc) {
-        testCases.add(tc);
+        list.add(tc);
     }
 
-    public void removeTestCase(TestCase tc) {
-        testCases.remove(tc);
+    public List<TestCase> getAll() {
+        return list;
     }
 
-    public List<TestCase> getAllTestCases() {
-        return testCases;
-    }
-
-    public int size() {
-        return testCases.size();
+    public TestCase searchByTitle(String title) {
+        for (TestCase tc : list) {
+            if (tc.getTitle().equals(title)) return tc;
+        }
+        return null;
     }
 }
