@@ -3,61 +3,55 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
+import javafx.scene.control.TreeItem;
+import javafx.scene.control.TreeView;
 import javafx.scene.layout.*;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.List;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 
 public class MainApp extends Application {
 
-    // Stored test suite and test cases (UI-level)
-    private String createdSuiteTitle = null;            // Only one suite allowed in this design
-    private List<TestCaseView> testCases = new ArrayList<>();
+    private Coordinator coordinator = new Coordinator(); // FULL backend connection
 
     @Override
     public void start(Stage stage) {
 
-        // -----------------------------
-        // HOME SCREEN TITLE
-        // -----------------------------
+        // ----------------------------------------------------
+        // HOME SCREEN
+        // ----------------------------------------------------
         Label titleLabel = new Label("Assignment Compiler");
         titleLabel.setStyle("-fx-font-size: 26px; -fx-font-weight: bold;");
 
-        // -----------------------------
-        // MAIN BUTTONS
-        // -----------------------------
         Button btnCreateSuite = new Button("Create Test Suite");
         Button btnGetSuite = new Button("Get Test Suite");
         Button btnCreateCase = new Button("Create Test Case");
         Button btnExecuteSuite = new Button("Execute Test Suite");
 
-        // Disable unavailable actions at start
         btnGetSuite.setDisable(true);
         btnCreateCase.setDisable(true);
-        btnExecuteSuite.setDisable(true); // will be enabled later when needed
+        btnExecuteSuite.setDisable(true);
 
-        // Actions
         btnCreateSuite.setOnAction(e -> showCreateTestSuitePopup(stage, btnGetSuite, btnCreateCase));
         btnGetSuite.setOnAction(e -> showGetTestSuitePopup(stage));
         btnCreateCase.setOnAction(e -> showCreateTestCasePopup(stage));
 
-        // Layout
         VBox layout = new VBox(20, titleLabel, btnCreateSuite, btnGetSuite, btnCreateCase, btnExecuteSuite);
         layout.setAlignment(Pos.CENTER);
         layout.setPadding(new Insets(25));
 
         Scene scene = new Scene(layout, 450, 450);
-        stage.setTitle("Assignment Compiler");
         stage.setScene(scene);
+        stage.setTitle("Assignment Compiler");
         stage.show();
     }
 
-    // =========================================================================
-    // 1. CREATE TEST SUITE POPUP
-    // =========================================================================
+    // ========================================================================
+    // CREATE TEST SUITE POPUP (Fully connected to Coordinator)
+    // ========================================================================
     private void showCreateTestSuitePopup(Stage owner, Button btnGetSuite, Button btnCreateCase) {
 
         Stage popup = new Stage();
@@ -71,15 +65,18 @@ public class MainApp extends Application {
         titleField.textProperty().addListener((obs, o, n) -> btnDone.setDisable(n.trim().isEmpty()));
 
         btnDone.setOnAction(e -> {
-            createdSuiteTitle = titleField.getText().trim();
+
+            // Backend call
+            String title = titleField.getText().trim();
+            coordinator.createTestSuite(title);
+
             popup.close();
 
-            Alert success = new Alert(Alert.AlertType.INFORMATION);
-            success.setHeaderText(null);
-            success.setTitle("Success");
-            success.setContentText("Test Suite \"" + createdSuiteTitle + "\" created successfully!");
-            success.showAndWait();
+            Alert alert = new Alert(Alert.AlertType.INFORMATION,
+                    "Test Suite \"" + title + "\" created successfully!");
+            alert.showAndWait();
 
+            // Enable remaining UI
             btnGetSuite.setDisable(false);
             btnCreateCase.setDisable(false);
 
@@ -95,61 +92,30 @@ public class MainApp extends Application {
         popup.show();
     }
 
-    // =========================================================================
-    // 2. GET TEST SUITE POPUP
-    // =========================================================================
+    // ========================================================================
+    // GET TEST SUITE POPUP
+    // ========================================================================
     private void showGetTestSuitePopup(Stage owner) {
 
         TextInputDialog dialog = new TextInputDialog();
-        dialog.setTitle("Get Test Suite");
-        dialog.setHeaderText("Enter the title of the Test Suite:");
+        dialog.setHeaderText("Enter Test Suite Title:");
         dialog.setContentText("Title:");
 
-        dialog.showAndWait().ifPresent(title -> {
-            if (createdSuiteTitle != null && title.equals(createdSuiteTitle)) {
-                showTestSuiteDetails(owner);
+        dialog.showAndWait().ifPresent(input -> {
+            TestSuite suite = coordinator.getCurrentSuite();
+
+            if (suite != null && suite.getTitle().equals(input)) {
+                showTestSuiteDetailsWindow(owner);
             } else {
-                Alert err = new Alert(Alert.AlertType.ERROR, "No Test Suite found with that name.");
-                err.show();
+                new Alert(Alert.AlertType.ERROR,
+                        "No Test Suite found with that name.").show();
             }
         });
     }
 
-    // =========================================================================
-    // 3. SHOW TEST SUITE DETAILS
-    // =========================================================================
-    private void showTestSuiteDetails(Stage owner) {
-
-        Stage stage = new Stage();
-        stage.setTitle("Test Suite Details");
-
-        Label title = new Label("Test Suite: " + createdSuiteTitle);
-        title.setStyle("-fx-font-size: 18px; -fx-font-weight: bold;");
-
-        ListView<String> list = new ListView<>();
-        for (TestCaseView tc : testCases) list.getItems().add(tc.getTitle());
-
-        Label empty = new Label("No test cases added yet.");
-        empty.setStyle("-fx-text-fill: gray;");
-
-        VBox root = new VBox(15, title);
-        root.setPadding(new Insets(20));
-
-        if (testCases.isEmpty()) root.getChildren().add(empty);
-        else root.getChildren().add(list);
-
-        Button back = new Button("Back");
-        back.setOnAction(e -> stage.close());
-        root.getChildren().add(back);
-
-        stage.setScene(new Scene(root, 350, 350));
-        stage.initOwner(owner);
-        stage.show();
-    }
-
-    // =========================================================================
-    // 4. SHOW LIST OF TEST SUITES
-    // =========================================================================
+    // ========================================================================
+    // SHOW LIST OF TEST SUITE (Backend-driven)
+    // ========================================================================
     private void showListOfTestSuiteWindow(Stage owner) {
 
         Stage stage = new Stage();
@@ -158,24 +124,61 @@ public class MainApp extends Application {
         Label header = new Label("Test Suites");
         header.setStyle("-fx-font-size: 18px; -fx-font-weight: bold;");
 
-        ListView<String> view = new ListView<>();
-        view.getItems().add(createdSuiteTitle);
+        ListView<String> list = new ListView<>();
+        TestSuite suite = coordinator.getCurrentSuite();
+
+        if (suite != null) {
+            list.getItems().add(suite.getTitle());
+        }
 
         Button back = new Button("Back");
         back.setOnAction(e -> stage.close());
 
-        VBox root = new VBox(15, header, view, back);
+        VBox root = new VBox(15, header, list, back);
+        root.setPadding(new Insets(15));
         root.setAlignment(Pos.CENTER);
-        root.setPadding(new Insets(20));
+
+        stage.setScene(new Scene(root, 350, 300));
+        stage.initOwner(owner);
+        stage.show();
+    }
+
+    // ========================================================================
+    // TEST SUITE DETAILS WINDOW (REAL backend data)
+    // ========================================================================
+    private void showTestSuiteDetailsWindow(Stage owner) {
+
+        TestSuite suite = coordinator.getCurrentSuite();
+        Stage stage = new Stage();
+
+        Label header = new Label("Test Suite: " + suite.getTitle());
+        header.setStyle("-fx-font-size: 18px; -fx-font-weight: bold;");
+
+        ListView<String> list = new ListView<>();
+
+        if (suite.getTestCases().isEmpty()) {
+            list.getItems().add("No Test Cases Added.");
+        } else {
+            for (TestCase tc : suite.getTestCases()) {
+                list.getItems().add(tc.getTitle());
+            }
+        }
+
+        Button back = new Button("Back");
+        back.setOnAction(e -> stage.close());
+
+        VBox root = new VBox(15, header, list, back);
+        root.setPadding(new Insets(15));
+        root.setAlignment(Pos.CENTER);
 
         stage.setScene(new Scene(root, 350, 350));
         stage.initOwner(owner);
         stage.show();
     }
 
-    // =========================================================================
-    // 5. CREATE TEST CASE POPUP (MANUAL ENTRY + UPLOAD OPTION)
-    // =========================================================================
+    // ========================================================================
+    // CREATE TEST CASE POPUP (manual + upload)
+    // ========================================================================
     private void showCreateTestCasePopup(Stage owner) {
 
         Stage popup = new Stage();
@@ -194,7 +197,6 @@ public class MainApp extends Application {
         Button doneBtn = new Button("Done");
         doneBtn.setDisable(true);
 
-        // Validation for manual path: require title + expected (input optional)
         Runnable validate = () -> {
             boolean ok = !titleField.getText().trim().isEmpty()
                     && !expectedArea.getText().trim().isEmpty();
@@ -204,42 +206,33 @@ public class MainApp extends Application {
         titleField.textProperty().addListener((o, ov, nv) -> validate.run());
         expectedArea.textProperty().addListener((o, ov, nv) -> validate.run());
 
-        // Manual "Done" handler
         doneBtn.setOnAction(e -> {
             String title = titleField.getText().trim();
             String input = inputArea.getText();
             String expected = expectedArea.getText();
 
-            testCases.add(new TestCaseView(title, input, expected, null));
+            coordinator.createTestCase(title, input, expected);
 
             popup.close();
             new Alert(Alert.AlertType.INFORMATION,
-                    "Test Case \"" + title + "\" created successfully!"
-            ).showAndWait();
+                    "Test Case \"" + title + "\" created successfully!").showAndWait();
 
             showListOfTestCaseScreen(owner);
         });
 
-        // Upload path: user chooses a file instead of typing everything
         uploadBtn.setOnAction(e -> {
-            FileChooser fc = new FileChooser();
-            fc.setTitle("Select Test Case File");
-            File file = fc.showOpenDialog(popup);
-            if (file != null) {
-                // Close manual create popup and continue with upload flow
-                popup.close();
-                showUploadFileTestCaseFlow(owner, file);
-            }
+            popup.close();
+            handleUploadFileCase(owner);
         });
 
-        HBox bottomButtons = new HBox(10, uploadBtn, doneBtn);
-        bottomButtons.setAlignment(Pos.CENTER);
+        HBox controls = new HBox(10, uploadBtn, doneBtn);
+        controls.setAlignment(Pos.CENTER);
 
         VBox root = new VBox(12,
                 titleLabel, titleField,
                 inputLabel, inputArea,
                 expectedLabel, expectedArea,
-                bottomButtons
+                controls
         );
         root.setPadding(new Insets(20));
 
@@ -248,47 +241,60 @@ public class MainApp extends Application {
         popup.show();
     }
 
-    // =========================================================================
-    // 5b. UPLOAD-FILE TEST CASE FLOW
-    // =========================================================================
-    private void showUploadFileTestCaseFlow(Stage owner, File file) {
+    // ========================================================================
+    // HANDLE UPLOAD FILE FLOW
+    // ========================================================================
+    private void handleUploadFileCase(Stage owner) {
 
         Stage popup = new Stage();
-        popup.setTitle("Upload Test Case From File");
+        popup.setTitle("Upload Test Case File");
 
-       String fullName = file.getName();
-String baseName = (fullName.lastIndexOf('.') > 0)
-        ? fullName.substring(0, fullName.lastIndexOf('.'))
-        : fullName;
+        FileChooser chooser = new FileChooser();
+        File file = chooser.showOpenDialog(popup);
 
-Label infoLabel = new Label("Test Case created from file:");
-Label titleLabel = new Label("Title: " + baseName);
-titleLabel.setStyle("-fx-font-weight: bold;");
+        if (file == null) {
+            popup.close();
+            return;
+        }
 
-Label fileLabel = new Label("📄 " + fullName);
+        String fullName = file.getName();
+        String baseName = (fullName.lastIndexOf('.') > 0)
+                ? fullName.substring(0, fullName.lastIndexOf('.'))
+                : fullName;
 
-Button doneBtn = new Button("Done");
-doneBtn.setOnAction(e -> {
-    testCases.add(new TestCaseView(baseName, "", "", file));
-    popup.close();
-    new Alert(Alert.AlertType.INFORMATION,
-            "Test Case \"" + baseName + "\" created successfully from file!"
-    ).showAndWait();
-    showListOfTestCaseScreen(owner);
-});
+        Label title = new Label("Title: " + baseName);
+        title.setStyle("-fx-font-weight: bold;");
 
-        VBox root = new VBox(15, infoLabel, titleLabel, fileLabel, doneBtn);
+        Label fileLabel = new Label("📄 " + fullName);
+
+        Button done = new Button("Done");
+        done.setOnAction(e -> {
+            String fileContent = "";
+            try {
+                fileContent = Files.readString(file.toPath(), StandardCharsets.UTF_8);
+            } catch (Exception ignore) {}
+
+            coordinator.createTestCase(baseName, fileContent, "");
+
+            popup.close();
+            new Alert(Alert.AlertType.INFORMATION,
+                    "Test Case \"" + baseName + "\" created from file!").showAndWait();
+
+            showListOfTestCaseScreen(owner);
+        });
+
+        VBox root = new VBox(15, new Label("Test Case created from file:"), title, fileLabel, done);
         root.setAlignment(Pos.CENTER);
         root.setPadding(new Insets(20));
 
-        popup.setScene(new Scene(root, 400, 250));
+        popup.setScene(new Scene(root, 350, 250));
         popup.initOwner(owner);
         popup.show();
     }
 
-    // =========================================================================
-    // 6. LIST OF TEST CASES SCREEN
-    // =========================================================================
+    // ========================================================================
+    // LIST OF TEST CASES SCREEN (backend driven)
+    // ========================================================================
     private void showListOfTestCaseScreen(Stage owner) {
 
         Stage stage = new Stage();
@@ -297,17 +303,19 @@ doneBtn.setOnAction(e -> {
         Label header = new Label("List of Test Cases");
         header.setStyle("-fx-font-size: 18px; -fx-font-weight: bold;");
 
-        ListView<String> view = new ListView<>();
-        for (TestCaseView tc : testCases)
-            view.getItems().add(tc.getTitle());
+        ListView<String> list = new ListView<>();
 
-        Button addButton = new Button("Add to Test Suite");
-        addButton.setOnAction(e -> showAddToSuitePopup(stage));
+        for (TestCase tc : coordinator.testcaseList.getAllTestCases()) {
+            list.getItems().add(tc.getTitle());
+        }
+
+        Button add = new Button("Add to Test Suite");
+        add.setOnAction(e -> showAddToSuitePopup(stage));
 
         Button back = new Button("Back");
         back.setOnAction(e -> stage.close());
 
-        VBox root = new VBox(15, header, view, addButton, back);
+        VBox root = new VBox(15, header, list, add, back);
         root.setAlignment(Pos.CENTER);
         root.setPadding(new Insets(20));
 
@@ -316,9 +324,9 @@ doneBtn.setOnAction(e -> {
         stage.show();
     }
 
-    // =========================================================================
-    // 7. ADD TEST CASE TO TEST SUITE POPUP
-    // =========================================================================
+    // ========================================================================
+    // ADD TEST CASE TO SUITE (backend integrated)
+    // ========================================================================
     private void showAddToSuitePopup(Stage owner) {
 
         Stage popup = new Stage();
@@ -331,40 +339,36 @@ doneBtn.setOnAction(e -> {
         TextField tcField = new TextField();
 
         Button done = new Button("Done");
-
         done.setOnAction(e -> {
             String suiteName = suiteField.getText().trim();
-            String caseName = tcField.getText().trim();
+            String tcName = tcField.getText().trim();
 
-            if (createdSuiteTitle == null || !suiteName.equals(createdSuiteTitle)) {
-                new Alert(Alert.AlertType.ERROR, "Incorrect Test Suite name").show();
+            TestSuite suite = coordinator.getCurrentSuite();
+
+            if (suite == null || !suite.getTitle().equals(suiteName)) {
+                new Alert(Alert.AlertType.ERROR,
+                        "Incorrect Test Suite name").show();
                 return;
             }
 
-            TestCaseView match = findTestCaseByTitle(caseName);
-            if (match == null) {
-                new Alert(Alert.AlertType.ERROR, "Test Case name not found").show();
+            // Check testcase exists
+            TestCase tc = coordinator.testcaseList.searchByTitle(tcName);
+            if (tc == null) {
+                new Alert(Alert.AlertType.ERROR,
+                        "Test Case name not found").show();
                 return;
             }
+
+            coordinator.addTestCaseToSuite(tcName);
 
             popup.close();
-
-            // In your real system, this is where you'd call:
-            // coordinator.addTestCaseToSuite(caseName);
-            // For now, we just show success and suite contents.
-
             new Alert(Alert.AlertType.INFORMATION,
-                    "Test Case \"" + caseName + "\" added to Test Suite!"
-            ).showAndWait();
+                    "Test Case \"" + tcName + "\" added successfully!").showAndWait();
 
             showTestSuiteWithCases(owner);
         });
 
-        VBox root = new VBox(12,
-                suiteLabel, suiteField,
-                tcLabel, tcField,
-                done
-        );
+        VBox root = new VBox(12, suiteLabel, suiteField, tcLabel, tcField, done);
         root.setAlignment(Pos.CENTER);
         root.setPadding(new Insets(20));
 
@@ -373,22 +377,26 @@ doneBtn.setOnAction(e -> {
         popup.show();
     }
 
-    // =========================================================================
-    // 8. SHOW SUITE WITH TEST CASES (TREE VIEW)
-    // =========================================================================
+    // ========================================================================
+    // SHOW SUITE CONTENT (REAL backend testcases)
+    // ========================================================================
     private void showTestSuiteWithCases(Stage owner) {
+
+        TestSuite suite = coordinator.getCurrentSuite();
 
         Stage stage = new Stage();
         stage.setTitle("Test Suite Content");
 
-        Label header = new Label("Test Suite: " + createdSuiteTitle);
+        Label header = new Label("Test Suite: " + suite.getTitle());
         header.setStyle("-fx-font-size: 18px; -fx-font-weight: bold;");
 
-        TreeItem<String> rootItem = new TreeItem<>(createdSuiteTitle);
+        TreeItem<String> rootItem = new TreeItem<>(suite.getTitle());
         rootItem.setExpanded(true);
 
-        for (TestCaseView tc : testCases)
+        // REAL BACKEND TEST CASES
+        for (TestCase tc : suite.getTestCases()) {
             rootItem.getChildren().add(new TreeItem<>(tc.getTitle()));
+        }
 
         TreeView<String> tree = new TreeView<>(rootItem);
 
@@ -401,34 +409,6 @@ doneBtn.setOnAction(e -> {
         stage.setScene(new Scene(root, 350, 450));
         stage.initOwner(owner);
         stage.show();
-    }
-
-    // Utility
-    private TestCaseView findTestCaseByTitle(String title) {
-        for (TestCaseView tc : testCases)
-            if (tc.getTitle().equals(title))
-                return tc;
-        return null;
-    }
-
-    // Simple view model for test cases (UI-side)
-    private static class TestCaseView {
-        private final String title;
-        private final String input;
-        private final String expected;
-        private final File sourceFile; // can be null if manually created
-
-        public TestCaseView(String title, String input, String expected, File sourceFile) {
-            this.title = title;
-            this.input = input;
-            this.expected = expected;
-            this.sourceFile = sourceFile;
-        }
-
-        public String getTitle() { return title; }
-        public String getInput() { return input; }
-        public String getExpected() { return expected; }
-        public File getSourceFile() { return sourceFile; }
     }
 
     public static void main(String[] args) {
