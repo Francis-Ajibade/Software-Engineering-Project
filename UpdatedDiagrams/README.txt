@@ -1,0 +1,1 @@
+This folder is the location to upload all the updated diagrams (i.e. sequence diagrams, class diagram)
