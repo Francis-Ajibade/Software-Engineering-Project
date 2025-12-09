@@ -1,1 +1,0 @@
-This folder is the location to upload the updated requirements list document.
