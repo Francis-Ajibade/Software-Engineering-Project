@@ -1,99 +1,105 @@
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.InputStreamReader;
+import java.io.*;
 
-public class Program{
-    
-    private String programName;
-    private String folderPath;
-    private String javaFilePath;
-    private String className;
+public class Program {
 
-    public Program(String programName, String folderPath, String javaFilePath) {
+    private String programName;      // student folder name
+    private String folderPath;       // folder containing all .java files
+    private String mainJavaFile;     // full path to the file containing main()
+    private String mainClassName;    // class name extracted from mainJavaFile
+
+    public Program(String programName, String folderPath, String mainJavaFile) {
         this.programName = programName;
         this.folderPath = folderPath;
-        this.javaFilePath = javaFilePath;
-
-        File f = new File(javaFilePath);
-        this.className = f.getName().replace(".java", "");
+        this.mainJavaFile = mainJavaFile;
+        this.mainClassName = extractClassName(mainJavaFile);
     }
 
     public String getProgramName() {
         return programName;
     }
 
+    public String getMainClassName() {
+        return mainClassName;
+    }
+
     /**
-     * Compile this program and return the compiler error messages if any.
-     * @return null if compilation succeeded, otherwise the error output.
+     * Extract class name from a file name.
+     * Example: /Users/.../MainProgram.java → "MainProgram"
      */
+    private String extractClassName(String filePath) {
+        if (filePath == null) return null;
+
+        File f = new File(filePath);
+        String name = f.getName(); // e.g., MainProgram.java
+
+        if (name.endsWith(".java"))
+            return name.substring(0, name.length() - 5);
+
+        return name;
+    }
+
+
+    // ================================================================
+    //                       COMPILE STUDENT CODE
+    // ================================================================
     public String compileAndReturnErrors() {
-        try {
-            ProcessBuilder builder = new ProcessBuilder("javac", javaFilePath);
-            builder.directory(new File(folderPath));
-            builder.redirectErrorStream(true);
 
-            Process process = builder.start();
-            BufferedReader reader = new BufferedReader(
-                    new InputStreamReader(process.getInputStream())
+        try {
+            // Compile ALL Java files inside the folder
+            Process p = Runtime.getRuntime().exec(
+                    "javac *.java",
+                    null,
+                    new File(folderPath)
             );
 
-            StringBuilder err = new StringBuilder();
-            String line;
+            p.waitFor();
 
-            while ((line = reader.readLine()) != null) {
-                err.append(line).append("\n");
+            BufferedReader err =
+                    new BufferedReader(new InputStreamReader(p.getErrorStream()));
+
+            String firstErrorLine = err.readLine();
+            if (firstErrorLine != null) {
+                return firstErrorLine;  // A compilation error occurred
             }
 
-            int exit = process.waitFor();
-            return (exit == 0) ? null : err.toString().trim();
+            return null; // No errors
 
         } catch (Exception e) {
-            return "Unknown compilation error: " + e.getMessage();
+            return "Unexpected compilation error.";
         }
     }
 
-    /**
-     * Simple boolean wrapper around compileAndReturnErrors.
-     */
-    public boolean compile() {
-        return compileAndReturnErrors() == null;
-    }
 
-    /**
-     * Run the compiled program, feeding the given input as stdin.
-     * Returns the program's stdout as a string.
-     */
-    public String run(String inputData) {
-        StringBuilder out = new StringBuilder();
-
+    // ================================================================
+    //                        RUN STUDENT CODE
+    // ================================================================
+    public String run(String input) {
         try {
-            ProcessBuilder builder = new ProcessBuilder("java", className);
-            builder.directory(new File(folderPath));
-            builder.redirectErrorStream(true);
 
-            Process process = builder.start();
-
-            // send input
-            process.getOutputStream().write(inputData.getBytes());
-            process.getOutputStream().flush();
-            process.getOutputStream().close();
-
-            // read output
-            BufferedReader reader = new BufferedReader(
-                    new InputStreamReader(process.getInputStream())
+            // MUST USE THE MAIN CLASS NAME, NOT FOLDER NAME
+            Process p = Runtime.getRuntime().exec(
+                    "java " + mainClassName,
+                    null,
+                    new File(folderPath)
             );
 
-            String line;
-            while ((line = reader.readLine()) != null) {
-                out.append(line).append("\n");
-            }
+            // Send input to the running program
+            PrintWriter pw = new PrintWriter(p.getOutputStream());
+            pw.println(input);
+            pw.flush();
 
-            process.waitFor();
+            // Read ONE line of output
+            BufferedReader in =
+                    new BufferedReader(new InputStreamReader(p.getInputStream()));
+
+            String out = in.readLine();
+
+            p.waitFor();
+
+            return (out == null ? "" : out.trim());
 
         } catch (Exception e) {
-            return "ERROR";
+            return "";
         }
-
-        return out.toString().trim();
     }
 }
