@@ -1,159 +1,108 @@
+/***********************************************
+ * Coordinator.java
+ * Central controller linking UI and backend.
+ * Handles:
+ * - Creating suites & cases
+ * - Executing test suites (V1 + V2)
+ * - Saving/Loading TestSuiteResult (V2)
+ * - Comparing results (V2)
+ ***********************************************/
+
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
-public class Coordinator{
+public class Coordinator {
 
-    // === Collaborators managed internally ===
     private ListOfTestSuite listOfTestSuites;
     private ListOfPrograms listOfPrograms;
     private ListofTestCase testcaseList;
 
-    // === Constructor ===
+    private ResultFileManager rfm = new ResultFileManager();
+
     public Coordinator() {
         this.listOfTestSuites = new ListOfTestSuite();
         this.listOfPrograms = new ListOfPrograms();
         this.testcaseList = new ListofTestCase();
     }
 
-    // ============================================================
-    //               CREATE A NEW TEST SUITE
-    // ============================================================
+    // ------------ TEST SUITE --------------
     public void createTestSuite(String title) {
-        TestSuite suite = new TestSuite(title);
-        listOfTestSuites.setTestSuite(suite);
+        listOfTestSuites.setTestSuite(new TestSuite(title));
     }
 
-    /**
-     * Get the current TestSuite by title.
-     * Because ListOfTestSuite only stores ONE suite, this just checks the title.
-     */
     public TestSuite getTestSuite(String title) {
         TestSuite suite = listOfTestSuites.getTestSuite();
-        if (suite != null && suite.getTitle().equals(title)) {
-            System.out.println("[Coordinator] getTestSuite(\"" + title + "\") -> found");
-            return suite;
-        }
-        System.out.println("[Coordinator] getTestSuite(\"" + title + "\") -> NOT found");
-        return null;
+        return (suite != null && suite.getTitle().equals(title)) ? suite : null;
     }
 
-    // helper to get current suite regardless of title
     public TestSuite getCurrentSuite() {
         return listOfTestSuites.getTestSuite();
     }
 
-    // ============================================================
-    //               CREATE A NEW TEST CASE (manual)
-    // ============================================================
+    // ------------ TEST CASE MGMT ----------
     public void createTestCase(String title, String input, String expectedOutput) {
-        TestCase tc = new TestCase(title, input, expectedOutput);
-        testcaseList.addTestCase(tc);
+        testcaseList.addTestCase(new TestCase(title, input, expectedOutput));
     }
 
-    // ============================================================
-    //               LOAD TEST CASE FROM FILE (Case 2)
-    // ============================================================
-    /**
-     * Parse and load a TestCase from a file in the required format.
-     * Returns the created TestCase, or null if invalid / error.
-     */
     public TestCase loadTestCaseFromFile(File file) {
         try {
             TestCase tc = TestCase.parseFromFile(file);
             testcaseList.addTestCase(tc);
-            System.out.println("[Coordinator] Loaded TestCase from file: " + tc.getTitle());
             return tc;
         } catch (IOException | IllegalArgumentException e) {
-            System.out.println("[Coordinator] loadTestCaseFromFile ERROR: " + e.getMessage());
             return null;
         }
     }
 
-    // ============================================================
-    //        ADD A TEST CASE TO THE CURRENT TEST SUITE
-    // ============================================================
-    public void addTestCaseToSuite(String testCaseTitle) {
-
+    public void addTestCaseToSuite(String title) {
+        TestCase tc = testcaseList.searchByTitle(title);
         TestSuite suite = listOfTestSuites.getTestSuite();
-        if (suite == null) return;
-
-        // find TestCase from global list
-        TestCase tc = testcaseList.searchByTitle(testCaseTitle);
-
-        if (tc != null) {
-            suite.addTestCase(tc);   // TestSuite handles its ListOfTestCase
-        }
+        if (tc != null && suite != null) suite.addTestCase(tc);
     }
 
-    // ============================================================
-    //                SAVE A TEST CASE TO A FILE (Case 3)
-    // ============================================================
     public boolean saveTestCaseToFile(String testCaseTitle, String fullPath) {
         TestCase tc = testcaseList.searchByTitle(testCaseTitle);
-        if (tc == null) {
-            System.out.println("[Coordinator] saveTestCaseToFile: no test case with title \"" + testCaseTitle + "\"");
-            return false;
-        }
-
+        if (tc == null) return false;
         try {
             tc.saveToFile(fullPath);
-            System.out.println("[Coordinator] saveTestCaseToFile: \"" + testCaseTitle + "\" saved to " + fullPath);
             return true;
         } catch (IOException e) {
-            System.out.println("[Coordinator] saveTestCaseToFile ERROR: " + e.getMessage());
             return false;
         }
     }
 
-    // ============================================================
-    //  VALIDATE TEST CASES IN A SUITE (helper)
-    // ============================================================
-    private void validateTestCasesInSuite(TestSuite suite) {
-        if (suite.getTestCases() == null || suite.getTestCases().isEmpty()) {
-            throw new IllegalArgumentException("No test cases in test suite \"" + suite.getTitle() + "\".");
-        }
+    // ------------ VALIDATION --------------
+    private void validateSuite(TestSuite suite) {
+        if (suite.getTestCases() == null || suite.getTestCases().isEmpty())
+            throw new IllegalArgumentException("Test Suite has no test cases.");
 
         for (TestCase tc : suite.getTestCases()) {
-            if (tc.getTitle() == null || tc.getTitle().trim().isEmpty()) {
-                throw new IllegalArgumentException("Test case has empty TITLE.");
-            }
-            if (tc.getInput() == null || tc.getInput().trim().isEmpty()) {
-                throw new IllegalArgumentException("Test case \"" + tc.getTitle() + "\" has empty INPUT.");
-            }
-            if (tc.getExpectedOutput() == null || tc.getExpectedOutput().trim().isEmpty()) {
-                throw new IllegalArgumentException("Test case \"" + tc.getTitle() + "\" has empty OUTPUT.");
-            }
+            if (tc.getTitle().trim().isEmpty())
+                throw new IllegalArgumentException("Test case has empty title.");
+            if (tc.getInput().trim().isEmpty())
+                throw new IllegalArgumentException("Test case '" + tc.getTitle() + "' has empty INPUT.");
+            if (tc.getExpectedOutput().trim().isEmpty())
+                throw new IllegalArgumentException("Test case '" + tc.getTitle() + "' has empty OUTPUT.");
         }
     }
 
-    // ============================================================
-    //                  EXECUTE TEST SUITE
-    // ============================================================
-    public List<Result> executeTestSuite(String suiteName, String path) {
+    // ------------ EXECUTE TEST SUITE V1 (UI VIEW RESULT) --------------
+    public List<Result> executeTestSuite(String suiteName, String folderPath) {
+
+        TestSuite suite = getTestSuite(suiteName);
+        if (suite == null) throw new IllegalArgumentException("Test Suite not found.");
+
+        validateSuite(suite);
+
+        File folder = new File(folderPath);
+        if (!folder.exists() || !folder.isDirectory())
+            throw new IllegalArgumentException("Invalid submissions folder.");
+
+        listOfPrograms.generatePrograms(folderPath);
 
         List<Result> results = new ArrayList<>();
 
-        // 1. Validate suite exists
-        TestSuite suite = getTestSuite(suiteName);
-        if (suite == null) {
-            throw new IllegalArgumentException("No Test Suite found with name \"" + suiteName + "\".");
-        }
-
-        // 2. Validate submissions folder
-        File submissionsDir = new File(path);
-        if (!submissionsDir.exists() || !submissionsDir.isDirectory()) {
-            throw new IllegalArgumentException("Submissions folder does not exist or is not a directory:\n" + path);
-        }
-
-        // 3. Validate test cases in suite
-        validateTestCasesInSuite(suite);
-
-        // 4. Generate Program objects
-        listOfPrograms.generatePrograms(path);
-
-        // 5. For each student program
         for (Program p : listOfPrograms.getPrograms()) {
 
             String compErr = p.compileAndReturnErrors();
@@ -162,11 +111,9 @@ public class Coordinator{
                 continue;
             }
 
-            // 6. For each test case in the suite
             for (TestCase tc : suite.getTestCases()) {
                 String actual = p.run(tc.getInput());
                 boolean passed = tc.compareOutput(actual);
-
                 results.add(new Result(
                         p.getProgramName(),
                         tc.getTitle(),
@@ -175,6 +122,86 @@ public class Coordinator{
                         actual
                 ));
             }
+        }
+        return results;
+    }
+
+    // ------------ EXECUTE TEST SUITE V2 (SAVEABLE FORM) --------------
+    public TestSuiteResult executeTestSuiteV2(String suiteName, String folderPath) {
+
+        TestSuite suite = getTestSuite(suiteName);
+        if (suite == null) throw new IllegalArgumentException("Test Suite not found.");
+
+        validateSuite(suite);
+
+        File folder = new File(folderPath);
+        if (!folder.exists() || !folder.isDirectory())
+            throw new IllegalArgumentException("Invalid submissions folder.");
+
+        listOfPrograms.generatePrograms(folderPath);
+
+        TestSuiteResult tsr = new TestSuiteResult(suiteName);
+
+        for (Program p : listOfPrograms.getPrograms()) {
+
+            StudentResult sr = new StudentResult(p.getProgramName());
+
+            String compErr = p.compileAndReturnErrors();
+            if (compErr != null) {
+                sr.setCompileFailed();
+                tsr.addStudentResult(sr);
+                continue;
+            }
+
+            for (TestCase tc : suite.getTestCases()) {
+                String actual = p.run(tc.getInput());
+                boolean passed = tc.compareOutput(actual);
+                sr.setOutcome(tc.getTitle(), passed);
+            }
+            tsr.addStudentResult(sr);
+        }
+
+        return tsr;
+    }
+
+    // ------------ SAVE & LOAD RESULTS --------------
+    public void saveTestSuiteResult(TestSuiteResult tsr, String path) {
+        rfm.saveResult(tsr, path);
+    }
+
+    public TestSuiteResult loadTestSuiteResult(String path) {
+        return rfm.loadResult(path);
+    }
+
+    // ------------ COMPARE TWO RESULT FILES --------------
+    public List<ComparisonResult> compareResults(String file1, String file2) {
+
+        TestSuiteResult r1 = rfm.loadResult(file1);
+        TestSuiteResult r2 = rfm.loadResult(file2);
+
+        if (r1 == null || r2 == null)
+            return null;
+
+        Set<String> students = new HashSet<>();
+        students.addAll(r1.getAllStudentNames());
+        students.addAll(r2.getAllStudentNames());
+
+        List<ComparisonResult> results = new ArrayList<>();
+
+        for (String name : students) {
+
+            StudentResult s1 = r1.getStudentResult(name);
+            StudentResult s2 = r2.getStudentResult(name);
+
+            String rate1 = (s1 == null) ? "NO_INITIAL"
+                    : s1.didCompileFail() ? "NO_COMPILE"
+                    : s1.computeSuccessRate();
+
+            String rate2 = (s2 == null) ? "NO_RESUB"
+                    : s2.didCompileFail() ? "NO_COMPILE"
+                    : s2.computeSuccessRate();
+
+            results.add(new ComparisonResult(name, rate1, rate2));
         }
 
         return results;

@@ -16,7 +16,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-public class MainApp extends Application{
+public class MainApp extends Application {
 
     // Backend
     private Coordinator coordinator = new Coordinator();
@@ -30,6 +30,14 @@ public class MainApp extends Application{
     private Button btnSaveCase;
     private Button btnExecuteSuite;
 
+    // New V2 buttons
+    private Button btnSaveSuiteResult;
+    private Button btnLoadSuiteResult;
+    private Button btnCompareResults;
+
+    // Last executed suite result (for saving)
+    private TestSuiteResult lastExecutedSuiteResult;
+
     @Override
     public void start(Stage stage) {
 
@@ -42,16 +50,31 @@ public class MainApp extends Application{
         btnSaveCase = new Button("Save Test Case");
         btnExecuteSuite = new Button("Execute Test Suite");
 
+        // New V2 buttons
+        btnSaveSuiteResult = new Button("Save Test Suite Results");
+        btnLoadSuiteResult = new Button("Load Test Suite Results");
+        btnCompareResults = new Button("Compare Results");
+
+        // Initial states
         btnGetSuite.setDisable(true);
         btnCreateCase.setDisable(true);
         btnSaveCase.setDisable(true);
         btnExecuteSuite.setDisable(true);
+        btnSaveSuiteResult.setDisable(true); // enabled after we run a suite
+        // Load + Compare can be used anytime
+        btnLoadSuiteResult.setDisable(false);
+        btnCompareResults.setDisable(false);
 
+        // Handlers
         btnCreateSuite.setOnAction(e -> showCreateTestSuitePopup(stage));
         btnGetSuite.setOnAction(e -> showGetTestSuitePopup(stage));
         btnCreateCase.setOnAction(e -> showCreateTestCasePopup(stage));
         btnSaveCase.setOnAction(e -> showSaveTestCasePopup(stage));
         btnExecuteSuite.setOnAction(e -> showExecuteTestSuitePopup(stage));
+
+        btnSaveSuiteResult.setOnAction(e -> showSaveSuiteResultPopup(stage));
+        btnLoadSuiteResult.setOnAction(e -> showLoadSuiteResultPopup(stage));
+        btnCompareResults.setOnAction(e -> showCompareResultsPopup(stage));
 
         VBox layout = new VBox(20,
                 titleLabel,
@@ -59,12 +82,15 @@ public class MainApp extends Application{
                 btnGetSuite,
                 btnCreateCase,
                 btnSaveCase,
-                btnExecuteSuite
+                btnExecuteSuite,
+                btnSaveSuiteResult,
+                btnLoadSuiteResult,
+                btnCompareResults
         );
         layout.setAlignment(Pos.CENTER);
         layout.setPadding(new Insets(25));
 
-        Scene scene = new Scene(layout, 480, 520);
+        Scene scene = new Scene(layout, 500, 580);
         stage.setTitle("Assignment Compiler");
         stage.setScene(scene);
         stage.show();
@@ -81,7 +107,8 @@ public class MainApp extends Application{
         Button btnDone = new Button("Done");
         btnDone.setDisable(true);
 
-        titleField.textProperty().addListener((obs, o, n) -> btnDone.setDisable(n.trim().isEmpty()));
+        titleField.textProperty().addListener((obs, o, n) ->
+                btnDone.setDisable(n.trim().isEmpty()));
 
         btnDone.setOnAction(e -> {
             String title = titleField.getText().trim();
@@ -229,6 +256,7 @@ public class MainApp extends Application{
                     "Test Case \"" + title + "\" created successfully!"
             ).showAndWait();
 
+            // show the list with "Add to Test Suite"
             showListOfTestCaseScreen(owner);
         });
 
@@ -296,39 +324,39 @@ public class MainApp extends Application{
 
     private void showListOfTestCaseScreen(Stage owner) {
 
-    Stage stage = new Stage();
-    stage.setTitle("ListOfTestCase");
+        Stage stage = new Stage();
+        stage.setTitle("ListOfTestCase");
 
-    Label header = new Label("List of Test Cases");
-    header.setStyle("-fx-font-size: 18px; -fx-font-weight: bold;");
+        Label header = new Label("List of Test Cases");
+        header.setStyle("-fx-font-size: 18px; -fx-font-weight: bold;");
 
-    ListView<String> view = new ListView<>();
-    for (TestCaseView tc : testCases)
-        view.getItems().add(tc.title);
+        ListView<String> view = new ListView<>();
+        for (TestCaseView tc : testCases)
+            view.getItems().add(tc.title);
 
-    Button addButton = new Button("Add to Test Suite");
-    addButton.setOnAction(e -> showAddToSuitePopup(stage));
+        Button addButton = new Button("Add to Test Suite");
+        addButton.setOnAction(e -> showAddToSuitePopup(stage));
 
-    Button createAnotherBtn = new Button("Create Test Case");
-    createAnotherBtn.setOnAction(e -> {
-        stage.close();
-        showCreateTestCasePopup(owner);
-    });
+        Button createAnotherBtn = new Button("Create Test Case");
+        createAnotherBtn.setOnAction(e -> {
+            stage.close();
+            showCreateTestCasePopup(owner);
+        });
 
-    Button back = new Button("Back");
-    back.setOnAction(e -> stage.close());
+        Button back = new Button("Back");
+        back.setOnAction(e -> stage.close());
 
-    HBox buttonRow = new HBox(15, addButton, createAnotherBtn, back);
-    buttonRow.setAlignment(Pos.CENTER);
+        HBox buttonRow = new HBox(15, addButton, createAnotherBtn, back);
+        buttonRow.setAlignment(Pos.CENTER);
 
-    VBox root = new VBox(15, header, view, buttonRow);
-    root.setAlignment(Pos.CENTER);
-    root.setPadding(new Insets(20));
+        VBox root = new VBox(15, header, view, buttonRow);
+        root.setAlignment(Pos.CENTER);
+        root.setPadding(new Insets(20));
 
-    stage.setScene(new Scene(root, 430, 450));
-    stage.initOwner(owner);
-    stage.show();
-}
+        stage.setScene(new Scene(root, 430, 450));
+        stage.initOwner(owner);
+        stage.show();
+    }
 
     // ============= ADD TEST CASE TO SUITE =============
     private void showAddToSuitePopup(Stage owner) {
@@ -357,7 +385,9 @@ public class MainApp extends Application{
 
             TestCaseView testCaseView = findTestCaseByTitle(caseName);
             if (testCaseView == null) {
-                new Alert(Alert.AlertType.ERROR, "Test Case title is wrong or does not exist.").show();
+                new Alert(Alert.AlertType.ERROR,
+                        "Test Case title is wrong or does not exist."
+                ).showAndWait();
                 return;
             }
 
@@ -547,7 +577,7 @@ public class MainApp extends Application{
                 return;
             }
 
-            // Loading dialog
+            // Loading dialog (unchanged style)
             Stage loading = new Stage();
             Label loadingLabel = new Label("Executing Test Suite…");
             ProgressIndicator spinner = new ProgressIndicator();
@@ -558,17 +588,29 @@ public class MainApp extends Application{
             loading.initOwner(owner);
             loading.show();
 
-            Task<List<Result>> task = new Task<>() {
+            // V2: wrap both v1 + v2 in one task
+            Task<ExecutionResultBundle> task = new Task<>() {
                 @Override
-                protected List<Result> call() {
-                    return coordinator.executeTestSuite(suiteName, folderPath);
+                protected ExecutionResultBundle call() {
+                    ExecutionResultBundle b = new ExecutionResultBundle();
+                    b.v1Results = coordinator.executeTestSuite(suiteName, folderPath);
+                    b.v2SuiteResult = coordinator.executeTestSuiteV2(suiteName, folderPath);
+                    return b;
                 }
             };
 
             task.setOnSucceeded(ev -> {
                 loading.close();
-                List<Result> results = task.getValue();
-                if (results.isEmpty()) {
+                ExecutionResultBundle bundle = task.getValue();
+                List<Result> results = bundle.v1Results;
+
+                // store V2 result for saving later
+                lastExecutedSuiteResult = bundle.v2SuiteResult;
+                if (lastExecutedSuiteResult != null) {
+                    btnSaveSuiteResult.setDisable(false);
+                }
+
+                if (results == null || results.isEmpty()) {
                     new Alert(Alert.AlertType.INFORMATION,
                             "Execution finished, but no results were produced."
                     ).showAndWait();
@@ -606,6 +648,65 @@ public class MainApp extends Application{
         popup.setScene(new Scene(root, 500, 230));
         popup.initOwner(owner);
         popup.show();
+    }
+
+    // helper bundle for execute v1+v2
+    private static class ExecutionResultBundle {
+        List<Result> v1Results;
+        TestSuiteResult v2SuiteResult;
+    }
+
+    // ============= SAVE TEST SUITE RESULT (V2) =============
+    private void showSaveSuiteResultPopup(Stage owner) {
+
+        if (lastExecutedSuiteResult == null) {
+            new Alert(Alert.AlertType.ERROR,
+                    "No Test Suite Result available. Please execute a suite first."
+            ).showAndWait();
+            return;
+        }
+
+        FileChooser chooser = new FileChooser();
+        chooser.setTitle("Save Test Suite Result");
+        chooser.setInitialFileName("TestSuiteResult.ser");
+        File file = chooser.showSaveDialog(owner);
+        if (file == null) return;
+
+        coordinator.saveTestSuiteResult(lastExecutedSuiteResult, file.getAbsolutePath());
+
+        new Alert(Alert.AlertType.INFORMATION,
+                "Test Suite Result saved successfully."
+        ).showAndWait();
+    }
+
+    // ============= LOAD TEST SUITE RESULT (V2) =============
+    private void showLoadSuiteResultPopup(Stage owner) {
+
+        FileChooser chooser = new FileChooser();
+        chooser.setTitle("Load Test Suite Result");
+        File file = chooser.showOpenDialog(owner);
+        if (file == null) return;
+
+        TestSuiteResult result = coordinator.loadTestSuiteResult(file.getAbsolutePath());
+        if (result == null) {
+            new Alert(Alert.AlertType.ERROR,
+                    "Failed to load result file."
+            ).showAndWait();
+            return;
+        }
+
+        // Very simple text-based UI
+        Stage stage = new Stage();
+        stage.setTitle("Loaded Test Suite Result");
+
+        TextArea area = new TextArea();
+        area.setEditable(false);
+        area.setText(result.formatAsText()); // you implement formatAsText() in TestSuiteResult
+
+        Scene scene = new Scene(area, 500, 500);
+        stage.setScene(scene);
+        stage.initOwner(owner);
+        stage.show();
     }
 
     // ============= CLASS REPORT (color-coded + save report) =============
@@ -859,6 +960,104 @@ public class MainApp extends Application{
                     "Failed to save result: " + ex.getMessage()
             ).showAndWait();
         }
+    }
+
+    // ============= COMPARE RESULTS (V2) =============
+    private void showCompareResultsPopup(Stage owner) {
+
+        Stage popup = new Stage();
+        popup.setTitle("Compare Results");
+
+        Label l1 = new Label("Result File 1:");
+        TextField f1 = new TextField();
+        Button b1 = new Button("Browse...");
+        b1.setOnAction(e -> {
+            FileChooser fc = new FileChooser();
+            File file = fc.showOpenDialog(popup);
+            if (file != null) f1.setText(file.getAbsolutePath());
+        });
+
+        Label l2 = new Label("Result File 2:");
+        TextField f2 = new TextField();
+        Button b2 = new Button("Browse...");
+        b2.setOnAction(e -> {
+            FileChooser fc = new FileChooser();
+            File file = fc.showOpenDialog(popup);
+            if (file != null) f2.setText(file.getAbsolutePath());
+        });
+
+        Button compareBtn = new Button("Compare");
+        Button cancelBtn = new Button("Cancel");
+
+        compareBtn.setOnAction(e -> {
+            String file1 = f1.getText().trim();
+            String file2 = f2.getText().trim();
+
+            if (file1.isEmpty() || file2.isEmpty()) {
+                new Alert(Alert.AlertType.ERROR,
+                        "Select both files."
+                ).showAndWait();
+                return;
+            }
+
+            List<ComparisonResult> results = coordinator.compareResults(file1, file2);
+            if (results == null) {
+                new Alert(Alert.AlertType.ERROR,
+                        "Comparison failed."
+                ).showAndWait();
+                return;
+            }
+
+            popup.close();
+            showComparisonResultsWindow(owner, results);
+        });
+
+        cancelBtn.setOnAction(e -> popup.close());
+
+        VBox root = new VBox(12,
+                l1, new HBox(10, f1, b1),
+                l2, new HBox(10, f2, b2),
+                new HBox(10, compareBtn, cancelBtn)
+        );
+        root.setPadding(new Insets(20));
+
+        popup.setScene(new Scene(root, 550, 280));
+        popup.initOwner(owner);
+        popup.show();
+    }
+
+    private void showComparisonResultsWindow(Stage owner, List<ComparisonResult> results) {
+
+        Stage stage = new Stage();
+        stage.setTitle("Comparison Results");
+
+        TextArea area = new TextArea();
+        area.setEditable(false);
+        area.setStyle("-fx-font-family: Consolas; -fx-font-size: 14;");
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("Student            Submission1        Submission2\n");
+        sb.append("---------------------------------------------------------\n");
+
+        for (ComparisonResult r : results) {
+            sb.append(String.format("%-18s %-18s %s\n",
+                    r.getStudentName(),
+                    r.getSubmission1Rate(),
+                    r.getSubmission2Rate()
+            ));
+        }
+
+        area.setText(sb.toString());
+
+        VBox root = new VBox(10,
+                new Label("Comparison Summary:"),
+                area
+        );
+        root.setPadding(new Insets(15));
+
+        stage.setScene(new Scene(root, 600, 400));
+        stage.initOwner(owner);
+        stage.show();
     }
 
     // ============= UTIL =============
