@@ -1,7 +1,0 @@
-TITLE: TC_AddPositive
-
-INPUT:
-4 5
-
-OUTPUT:
-9
