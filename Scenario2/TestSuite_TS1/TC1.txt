@@ -1,0 +1,5 @@
+TITLE: TC_AddOne
+INPUT:
+2
+OUTPUT:
+3
